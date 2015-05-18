@@ -5,27 +5,13 @@ import (
 	"time"
 )
 
-type asyncReply chan *redis.Reply;
-
-type pipe struct {
-	cmd string
-	args []interface{}
-	reply asyncReply
-}
-
-func (p *pipe) send(r *redis.Reply) {
-	go func() {
-		p.reply <- r
-	}()
-}
-
 type Client struct {
 	Client *redis.Client
-	pipe []*pipe
+	pipe   []*pipe
 }
 
 func NewClient(cs string) (*Client, error) {
-	client, err := redis.DialTimeout("tcp", cs, time.Second * 10)
+	client, err := redis.DialTimeout("tcp", cs, time.Second*10)
 
 	if err != nil {
 		return nil, err
@@ -130,4 +116,18 @@ func (c *Client) cmd(cmd string, args ...interface{}) (*redis.Reply, error) {
 
 func (c *Client) Close() error {
 	return c.Client.Close()
+}
+
+type asyncReply chan *redis.Reply
+
+type pipe struct {
+	cmd   string
+	args  []interface{}
+	reply asyncReply
+}
+
+func (p *pipe) send(r *redis.Reply) {
+	go func() {
+		p.reply <- r
+	}()
 }
