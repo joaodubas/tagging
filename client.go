@@ -5,9 +5,23 @@ import (
 	"time"
 )
 
+type asyncReply chan *redis.Reply;
+
+type pipe struct {
+	cmd string
+	args []interface{}
+	reply asyncReply
+}
+
+func (p *pipe) send(r *redis.Reply) {
+	go func() {
+		p.reply <- r
+	}()
+}
+
 type Client struct {
 	Client *redis.Client
-	pipe []pipe
+	pipe []*pipe
 }
 
 func NewClient(cs string) (*Client, error) {
@@ -17,7 +31,7 @@ func NewClient(cs string) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{client, []pipe{}}, nil
+	return &Client{client, []*pipe{}}, nil
 }
 
 // keys interface --------------------------------------------------------------
@@ -62,30 +76,49 @@ func (c *Client) Publish(channel string, value interface{}) (*redis.Reply, error
 
 // batch interface -------------------------------------------------------------
 
-type pipe struct {
-	cmd string
-	args []interface{}
-}
-
 func (c *Client) Multi() {
 	c.cleanPipe()
 }
 
-func (c *Client) Add(cmd string, args ...interface{}) {
-	c.pipe = append(c.pipe, pipe{cmd, args})
+func (c *Client) Add(cmd string, args ...interface{}) asyncReply {
+	reply := make(asyncReply)
+	c.pipe = append(c.pipe, &pipe{cmd, args, reply})
+	return reply
 }
 
 func (c *Client) Exec() (*redis.Reply, error) {
+	defer c.cleanPipe()
+
 	c.cmd("multi")
-	for _, p := range c.pipe {
-		c.cmd(p.cmd, p.args...)
+	c.execPipe()
+	r, err := c.cmd("exec")
+
+	if err != nil {
+		return r, err
 	}
+
+	for i, e := range r.Elems {
+		c.pipe[i].send(e)
+	}
+
+	return r, err
+}
+
+func (c *Client) Discard() (*redis.Reply, error) {
+	c.cmd("Multi")
+	c.execPipe()
 	c.cleanPipe()
-	return c.cmd("exec")
+	return c.cmd("discard")
 }
 
 func (c *Client) cleanPipe() {
-	c.pipe = []pipe{}
+	c.pipe = []*pipe{}
+}
+
+func (c *Client) execPipe() {
+	for _, p := range c.pipe {
+		c.cmd(p.cmd, p.args...)
+	}
 }
 
 // utility ---------------------------------------------------------------------

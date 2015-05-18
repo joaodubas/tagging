@@ -46,15 +46,25 @@ func main() {
 	conn.Add("set", "key:pipe:2", "hello")
 	conn.Add("set", "key:pipe:3", "oie")
 	conn.Add("set", "key:pipe:4", "hi")
-	conn.Add("get", "key:pipe:1")
-	conn.Add("get", "key:pipe:2")
-	conn.Add("get", "key:pipe:3")
-	conn.Add("get", "key:pipe:4")
+	ar1 := conn.Add("get", "key:pipe:1")
+	ar2 := conn.Add("get", "key:pipe:2")
+	ar3 := conn.Add("get", "key:pipe:3")
+	ar4 := conn.Add("get", "key:pipe:4")
 	r, err = conn.Exec()
 	handleError("Something went wrong with pipe:", err)
+	fmt.Printf("Responses: %s, %s, %s, %s\n", <-ar1, <-ar2, <-ar3, <-ar4)
 	for i, e := range r.Elems {
 		fmt.Printf("Result for op %d: %s\n", i, e)
 	}
+
+	conn.Multi()
+	conn.Add("set", "key:pipe:1", "ola")
+	conn.Add("set", "key:pipe:2", "hello")
+	conn.Add("get", "key:pipe:1")
+	conn.Add("get", "key:pipe:2")
+	r, err = conn.Discard()
+	handleError("Something went wrong with pipe:", err)
+	fmt.Printf("Result for discard %s", r)
 }
 
 func handleError(msg string, err error) {
