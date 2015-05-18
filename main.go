@@ -16,6 +16,8 @@ func main() {
 	setPubSub(conn)
 	setMultiExec(conn)
 	setMultiDiscard(conn)
+
+	tagManagerHandler(conn)
 }
 
 func handleError(msg string, err error) {
@@ -53,7 +55,7 @@ func setPubSub(conn *Client) {
 	defer psconn.Close()
 
 	sub := psconn.Subscribe("channel:test")
-	r, err := conn.Publish("channel:test", "hello")
+	_, err = conn.Publish("channel:test", "hello")
 	handleError("Did not publish message:", err)
 	sub = psconn.Receive()
 	if !sub.Timeout() {
@@ -89,7 +91,37 @@ func setMultiDiscard(conn *Client) {
 	conn.Add("get", "key:pipe:2")
 	r, err := conn.Discard()
 	handleError("Something went wrong with pipe:", err)
-	fmt.Printf("Result for discard %s", r)
+	fmt.Printf("Result for discard %s\n", r)
 }
 
+// tag method ------------------------------------------------------------------
+
+func tagManagerHandler(conn *Client) {
+	tm := NewTagManager("@pressure")
+
+	ch := make(chan *Tag)
+	limit := 50000
+
+	go func (tm *TagManager, conn *Client) {
+		for i := 0; i < limit; i++ {
+			go func(tm *TagManager, conn *Client, i int) {
+				ch <- NewTag(
+					conn,
+					fmt.Sprintf("tank-%d", i),
+					fmt.Sprintf("tank %d", i),
+					0,
+					100,
+				)
+			}(tm, conn, i)
+		}
+	}(tm, conn)
+
+	for {
+		tm.Append(<-ch)
+		if len(tm.Tags) == limit {
+			break
+		}
+	}
+
+	fmt.Println("Added:", tm)
 }
