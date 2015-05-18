@@ -48,7 +48,7 @@ func (t *TagManager) Append(tag Tagger) {
 	t.updateChildTagName(tag)
 	err := concreteCallMethod(tag, "Init")
 	if err != nil {
-		log.Printf("could not initialize tagger %s: %s", t, err)
+		log.Printf("could not initialize tagger %s: %s\n", t, err)
 		// panic(fmt.Sprintf())
 	} else {
 		t.Tags = append(t.Tags, tag)

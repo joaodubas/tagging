@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -11,11 +12,7 @@ func main() {
 	handleError("Error connecting with redis:", err)
 	defer conn.Close()
 
-	setString(conn)
-	setSet(conn)
-	setPubSub(conn)
-	setMultiExec(conn)
-	setMultiDiscard(conn)
+	toyHandler(conn)
 
 	tagManagerHandler(conn)
 }
@@ -28,6 +25,14 @@ func handleError(msg string, err error) {
 }
 
 // toy method ------------------------------------------------------------------
+
+func toyHandler(conn *Client) {
+	setString(conn)
+	setSet(conn)
+	setPubSub(conn)
+	setMultiExec(conn)
+	setMultiDiscard(conn)
+}
 
 func setString(conn *Client) {
 	conn.Set("key:string", "ola")
@@ -100,8 +105,10 @@ func tagManagerHandler(conn *Client) {
 	tm := NewTagManager("@pressure")
 
 	ch := make(chan *Tag)
-	limit := 50000
+	limit := 100000
+	info := 10000
 
+	initial := time.Now()
 	go func(tm *TagManager, conn *Client) {
 		for i := 0; i < limit; i++ {
 			go func(tm *TagManager, conn *Client, i int) {
@@ -115,13 +122,25 @@ func tagManagerHandler(conn *Client) {
 			}(tm, conn, i)
 		}
 	}(tm, conn)
+	endCreate := time.Now()
 
+	prev := endCreate
 	for {
 		tm.Append(<-ch)
+		if len(tm.Tags) % info == 0 {
+			now := time.Now()
+			fmt.Printf("To append %d: %s\n", len(tm.Tags), now.Sub(prev))
+			prev = now
+		}
 		if len(tm.Tags) == limit {
 			break
 		}
 	}
+	endAppend := time.Now()
 
 	fmt.Println("Added:", tm)
+
+	fmt.Println("To create tags:", endCreate.Sub(initial))
+	fmt.Println("To append tags:", endAppend.Sub(endCreate))
+	fmt.Println("Total:", endAppend.Sub(initial))
 }
