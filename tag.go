@@ -217,8 +217,8 @@ func concreteCallMethod(t Tagger, method string) error {
 		return fmt.Errorf("method %s do not exist in %s", f, r)
 	}
 	v := f.Call([]reflect.Value{})
-	if len(v) >= 1 && !v[len(v) - 1].IsNil() {
-		return fmt.Errorf(v[len(v) - 1].String())
+	if len(v) >= 1 && !v[len(v)-1].IsNil() {
+		return fmt.Errorf(v[len(v)-1].String())
 	}
 	return nil
 }

@@ -102,7 +102,7 @@ func tagManagerHandler(conn *Client) {
 	ch := make(chan *Tag)
 	limit := 50000
 
-	go func (tm *TagManager, conn *Client) {
+	go func(tm *TagManager, conn *Client) {
 		for i := 0; i < limit; i++ {
 			go func(tm *TagManager, conn *Client, i int) {
 				ch <- NewTag(
