@@ -127,7 +127,7 @@ func tagManagerHandler(conn *Client) {
 	prev := endCreate
 	for {
 		tm.Append(<-ch)
-		if len(tm.Tags) % info == 0 {
+		if len(tm.Tags)%info == 0 {
 			now := time.Now()
 			fmt.Printf("To append %d: %s\n", len(tm.Tags), now.Sub(prev))
 			prev = now
