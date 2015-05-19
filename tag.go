@@ -73,6 +73,52 @@ func NewTagManager(name string) *TagManager {
 	return &TagManager{Name: name}
 }
 
+// vector ----------------------------------------------------------------------
+
+type Vector struct {
+	conn *Client
+	Name string
+	Tags []string
+}
+
+func (v *Vector) String() string {
+	return fmt.Sprintf("Vector{Name: %s, Tag#len: %d", v.Name, len(v.Tags))
+}
+
+func (v *Vector) Init() error {
+	return nil
+}
+
+func (v *Vector) Get(tag string, prop string) (interface{}, error) {
+	return v.conn.Get(v.key(tag, prop))
+}
+
+func (v *Vector) Set(tag string, prop string, args ...interface{}) error {
+	_, err := v.conn.Set(v.key(tag, prop), args)
+	return err
+}
+
+func (v *Vector) Append(tag Tagger) {
+	n, err := concreteGetProp(tag, "Name")
+	if err != nil {
+		log.Printf("Could not append %s into vector %s\n", tag, v.Name)
+	} else {
+		v.Tags = append(v.Tags, n)
+	}
+}
+
+func (v *Vector) key(tag string, prop string) string {
+	return fmt.Sprintf("%s:%s", tag, prop)
+}
+
+func NewVector(name string, conn *Client, args ...string) *Vector {
+	return &Vector{
+		conn: conn,
+		Name: name,
+		Tags: args,
+	}
+}
+
 // tag -------------------------------------------------------------------------
 
 type Tag struct {
