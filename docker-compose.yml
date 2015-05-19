@@ -1,0 +1,6 @@
+---
+db:
+  image: redis:2.8
+
+build:
+  image: golang:1.4
