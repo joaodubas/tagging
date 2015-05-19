@@ -105,28 +105,35 @@ func tagManagerHandler(conn *Client) {
 	tm := NewTagManager("@pressure")
 
 	ch := make(chan *Tag)
-	limit := 100000
-	info := 10000
+	limit := 1
+	info := 1
 
 	initial := time.Now()
 	go func(tm *TagManager, conn *Client) {
+		psclient, err := NewClient("127.0.0.1:6379")
+		handleError("Could not connect with redis:", err)
+		psconn := NewPSClient(psclient)
+
 		for i := 0; i < limit; i++ {
-			go func(tm *TagManager, conn *Client, i int) {
+			go func(tm *TagManager, conn *Client, psconn *PSClient, i int) {
 				ch <- NewTag(
 					conn,
+					psconn,
 					fmt.Sprintf("tank-%d", i),
 					fmt.Sprintf("tank %d", i),
 					0,
 					100,
 				)
-			}(tm, conn, i)
+			}(tm, conn, psconn, i)
 		}
 	}(tm, conn)
 	endCreate := time.Now()
 
 	prev := endCreate
 	for {
-		tm.Append(<-ch)
+		v := <-ch
+		tm.Append(v)
+		v.Set(v.Name, "value", 50)
 		if len(tm.Tags)%info == 0 {
 			now := time.Now()
 			fmt.Printf("To append %d: %s\n", len(tm.Tags), now.Sub(prev))
@@ -143,4 +150,6 @@ func tagManagerHandler(conn *Client) {
 	fmt.Println("To create tags:", endCreate.Sub(initial))
 	fmt.Println("To append tags:", endAppend.Sub(endCreate))
 	fmt.Println("Total:", endAppend.Sub(initial))
+
+	time.Sleep(15 * time.Second)
 }
